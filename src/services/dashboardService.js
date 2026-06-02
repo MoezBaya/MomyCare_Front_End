@@ -1,231 +1,273 @@
+
+
 import api from "@/services/api";
+import { fetchDisponibilitesGyneco, fetchMyDisponibilites } from "@/services/disponibiliteService";
 
-function unwrap(response) {
-  return response?.data?.body || response?.data?.data || response?.data || null;
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function unwrap(res) {
+  return res?.data?.body ?? res?.data?.data ?? res?.data ?? null;
 }
 
-async function getFirstAvailable(urls) {
-  for (const url of urls.filter((item) => item && !item.includes("undefined"))) {
-    try {
-      const response = await api.get(url);
-      return unwrap(response);
-    } catch (error) {
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        throw error;
-      }
-    }
-  }
-
-  return null;
-}
-
-function asArray(value) {
-  if (!value) return [];
-  if (Array.isArray(value)) return value;
-  if (Array.isArray(value.content)) return value.content;
-  if (Array.isArray(value.items)) return value.items;
-  if (Array.isArray(value.body)) return value.body;
+function asArray(v) {
+  if (!v) return [];
+  if (Array.isArray(v)) return v;
+  if (Array.isArray(v.content)) return v.content;
+  if (Array.isArray(v.body)) return v.body;
   return [];
 }
 
-function fullName(person = {}) {
-  return (
-    person.name ||
-    person.nomComplet ||
-    [person.prenom, person.nom].filter(Boolean).join(" ") ||
-    person.login ||
-    person.username ||
-    ""
-  );
+function fullName({ prenom = "", nom = "", login = "" } = {}) {
+  return [prenom, nom].filter(Boolean).join(" ") || login || "";
 }
 
-function formatDate(value) {
+export function formatDate(value) {
   if (!value) return "";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-
-  return date.toLocaleDateString("fr-FR", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString("fr-FR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 }
 
-function formatTime(value) {
+export function formatTime(value) {
   if (!value) return "";
-
-  const text = String(value);
-  const timeMatch = text.match(/\b\d{2}:\d{2}/);
-  return timeMatch ? timeMatch[0] : text;
+  const match = String(value).match(/\b\d{2}:\d{2}/);
+  return match ? match[0] : String(value);
 }
 
+// ✅ Mapping complet aligné sur le backend enum StatusRDV
+// EN_ATTENTE, CONFIRME, ANNULE, REFUSER, TERMINE
 function normalizeStatus(value) {
-  const status = String(value || "").toLowerCase();
-
-  if (status.includes("attente") || status.includes("pending")) return "En attente";
-  if (status.includes("annul") || status.includes("cancel")) return "Annulé";
-  if (status.includes("pass") || status.includes("done")) return "Passé";
-  return "Confirmé";
+  const s = String(value || "").toUpperCase();
+  if (s.includes("ATTENTE") || s.includes("PENDING")) return "En attente";
+  if (s.includes("ANNUL")   || s.includes("CANCEL"))  return "Annulé";
+  if (s.includes("REFUS"))                             return "Refusé";
+  if (s.includes("TERMINE") || s.includes("DONE") || s.includes("PASS")) return "Terminé";
+  if (s.includes("CONFIRME") || s.includes("CONFIRM")) return "Confirmé";
+  return "En attente";
 }
 
-function normalizePatientProfile(profile, user) {
-  const data = profile || user || {};
+function formatAvailabilityLabel(dateTime) {
+  if (!dateTime) return "";
+  return `${formatDate(dateTime)} à ${formatTime(dateTime)}`;
+}
 
+// ─── Normaliseurs alignés sur les DTOs ────────────────────────────────────────
+
+function normalizePatientProfile(d = {}) {
   return {
-    id: data.id || user?.id,
-    nom: fullName(data) || user?.login || "Patiente",
-    matricule: data.matriculeSociale || data.matricule || data.numeroDossier || "--",
-    birthday: formatDate(data.dateDeNaissance || data.birthday),
-    phone: data.numeroTelephone || data.telephone || data.phone || "",
-    email: data.email || user?.email || "",
-    adresse: [data.adresse, data.ville].filter(Boolean).join(", ") || data.address || "",
-    weekOfPregnancy: data.semaineGrossesse || data.weekOfPregnancy || "--",
-    bloodType: data.groupeSanguin || data.bloodType || "--",
-    allergies: data.allergies || "Non renseigne",
-    lastDoctor: fullName(data.gynecologue || data.medecin) || "--",
+    id: d.id,
+    nom: fullName(d) || "Patiente",
+    prenom: d.prenom || "",
+    email: d.email || "",
+    phone: d.numeroTelephone || "",
+    adresse: [d.adresse, d.ville].filter(Boolean).join(", "),
+    matricule: d.matriculeSociale ? String(d.matriculeSociale) : "--",
+    birthday: formatDate(d.dateDeNaissance),
+    weekOfPregnancy: d.semaineGrossesse || "--",
+    bloodType: d.groupeSanguin || "--",
+    allergies: d.allergies || "Non renseigné",
+    lastDoctor: "--",
+    dossierMedicaleId: d.dossierMedicaleId || null,
   };
 }
 
-function normalizeDoctorProfile(profile, user) {
-  const data = profile || user || {};
-
+function normalizeDoctorProfile(d = {}) {
   return {
-    id: data.id || user?.id,
-    nom: fullName(data) || user?.login || "Gynecologue",
-    email: data.email || user?.email || "",
-    phone: data.numeroTelephone || data.telephone || data.phone || "",
-    adresse: [data.adresse, data.ville].filter(Boolean).join(", ") || data.address || "",
-    specialty: data.specialite || data.specialty || "Gynecologue Obstetricien",
-    matriculeCachet: data.matriculeCachet || "--",
-    numeroAgrement: data.numeroAgrement || "--",
-    experience: data.experience || "--",
+    id: d.id,
+    nom: fullName(d) || "Gynécologue",
+    prenom: d.prenom || "",
+    email: d.email || "",
+    phone: d.numeroTelephone || "",
+    adresse: [d.adresse, d.ville].filter(Boolean).join(", "),
+    specialty: "Gynécologue Obstétricien",
+    matriculeCachet: d.matriculeCachet ? String(d.matriculeCachet) : "--",
+    numeroAgrement: d.numeroAgrement || "--",
+    experience: d.experience != null ? `${d.experience} ans` : "--",
   };
 }
 
-function normalizeAppointment(appointment) {
-  const patient = appointment.patient || appointment.patiente || {};
-  const doctor = appointment.doctor || appointment.gynecologue || appointment.medecin || {};
-  const dateValue = appointment.date || appointment.dateRendezVous || appointment.startTime;
+function normalizeAppointment(a = {}) {
+  const dateValue = a.dateRendezVous || a.date || a.startTime || "";
+  const patNom    = a.patienteNom    || a.patiente?.nom    || "";
+  const patPrenom = a.patientePrenom || a.patiente?.prenom || "";
+  const docNom    = a.gynecologueNom    || a.gynecologue?.nom    || "";
+  const docPrenom = a.gynecologuePrenom || a.gynecologue?.prenom || "";
 
   return {
-    id: appointment.id || appointment.rendezVousId || `${dateValue}-${fullName(patient)}`,
-    doctor: fullName(doctor) || appointment.doctorName || "--",
-    patient: fullName(patient) || appointment.patientName || appointment.patienteName || "--",
-    specialty: doctor.specialite || appointment.specialty || "Gynecologue Obstetricien",
+    id: a.id,
+    patient: [patPrenom, patNom].filter(Boolean).join(" ") || "--",
+    patienteId: a.patienteId,
+    doctor: [docPrenom, docNom].filter(Boolean).join(" ") || "--",
+    gynecologueId: a.gynecologueId,
     date: formatDate(dateValue),
-    time: formatTime(appointment.heure || appointment.time || appointment.startTime || dateValue),
-    status: normalizeStatus(appointment.status || appointment.statut || appointment.etat),
-    type: appointment.type || appointment.motif || appointment.reason || "Consultation",
+    time: formatTime(dateValue),
+    status: normalizeStatus(a.statusRDV || a.status || a.statut),
+    type: a.motif || a.type || "Consultation",
+    specialty: "Gynécologue Obstétricien",
   };
 }
 
-function normalizePatient(patient) {
+function normalizePatient(p = {}) {
   return {
-    id: patient.id,
-    name: fullName(patient) || "Patiente",
-    phone: patient.numeroTelephone || patient.telephone || patient.phone || "",
-    email: patient.email || "",
-    termDate: formatDate(patient.dateAccouchementPrevue || patient.termDate),
-    progress: patient.semaineGrossesse ? `${patient.semaineGrossesse} sem` : patient.progress || "--",
+    id: p.id,
+    name: fullName(p) || "Patiente",
+    phone: p.numeroTelephone || "",
+    email: p.email || "",
+    termDate: "--",
+    progress: "--",
+    dossierMedicaleId: p.dossierMedicaleId || null,
   };
 }
 
-function normalizePrescription(prescription) {
-  const patient = prescription.patient || prescription.patiente || {};
+function normalizeDoctor(d = {}) {
+  return {
+    id: d.id,
+    name: fullName(d),
+    specialty: "Gynécologue Obstétricien",
+    hospital: [d.adresse, d.ville].filter(Boolean).join(", "),
+    rating: d.rating || "",
+    experience: d.experience ? `${d.experience} ans` : "",
+  };
+}
+
+function normalizePrescription(p = {}) {
+  const lignes = p.lignes || p.lignesOrdonnance || [];
+  const meds = lignes
+    .map((l) => l.medicamentNom || l.medicament || "")
+    .filter(Boolean)
+    .join(" • ") || p.medicaments || "--";
 
   return {
-    id: prescription.id,
-    patient: fullName(patient) || prescription.patientName || "--",
-    date: formatDate(prescription.date || prescription.createdAt),
-    meds: prescription.medicaments || prescription.meds || prescription.description || "--",
+    id: p.id,
+    consultationId: p.consultationId,
+    patient: p.patienteNom || "--",
+    date: formatDate(p.date || p.createdAt),
+    meds,
   };
 }
 
-function normalizeDoctor(doctor) {
-  return {
-    id: doctor.id,
-    name: fullName(doctor) || "Docteur",
-    specialty: doctor.specialite || doctor.specialty || "Gynecologue Obstetricien",
-    hospital: doctor.hopital || doctor.cabinet || doctor.adresse || "",
-    availability: doctor.disponibilite || doctor.availability || "",
-    rating: doctor.rating || "",
-  };
+// ─── Exports utilisés par les composants ──────────────────────────────────────
+
+export async function fetchAvailableGynecos() {
+  const res = await api.get("/api/gynecologues");
+  return asArray(unwrap(res)).map(normalizeDoctor);
 }
 
-export async function loadPatientDashboardData(user) {
-  const id = user?.id;
 
-  const [profile, appointments, doctors] = await Promise.all([
-    getFirstAvailable([
-      `/api/patientes/${id}`,
-      `/api/patiente/${id}`,
-      `/api/patients/${id}`,
-      "/api/patientes/me",
-      "/api/patients/me",
-      "/api/auth/me",
-    ]),
-    getFirstAvailable([
-      `/api/rendezvous/patiente/${id}`,
-      `/api/rendez-vous/patiente/${id}`,
-      `/api/appointments/patient/${id}`,
-      `/api/patients/${id}/appointments`,
-      "/api/rendezvous/me",
-    ]),
-    getFirstAvailable([
-      "/api/gynecologues",
-      "/api/gynecologue",
-      "/api/doctors",
-      "/api/medecins",
-    ]),
+export async function requestRdv(payload) {
+  const body = {
+    gynecologueId: payload.gynecologueId,
+    dateRendezVous: payload.dateRendezVous
+      || `${payload.date}T${payload.heure || "10:00"}:00`,
+    motif: payload.motif || payload.type || "CONSULTATION",
+  };
+  const res = await api.post("/api/rdv", body);
+  return unwrap(res);
+}
+
+export async function repondreRdv(rdvId, accepter) {
+  const res = await api.patch(`/api/rdv/${rdvId}/repondre`, null, {
+    params: { accepter },
+  });
+  return unwrap(res);
+}
+
+/** Dossier médical de la patiente connectée. */
+export async function fetchPatientDossier() {
+  const res = await api.get("/api/dossiers/mon-dossier");
+  return unwrap(res);
+}
+
+/** Consultations de la patiente connectée. */
+export async function fetchPatientConsultations() {
+  const res = await api.get("/api/consultations/mes-consultations");
+  return asArray(unwrap(res));
+}
+
+/** Analyses d'une consultation. */
+export async function fetchConsultationAnalyses(consultationId) {
+  const res = await api.get(`/api/consultations/${consultationId}/analyses`);
+  return asArray(unwrap(res));
+}
+
+/** Imageries d'une consultation. */
+export async function fetchConsultationImageries(consultationId) {
+  const res = await api.get(`/api/consultations/${consultationId}/imageries`);
+  return asArray(unwrap(res));
+}
+
+/** Ordonnances de la patiente via ses consultations. */
+export async function fetchPatientPrescriptions() {
+  let consultations = [];
+  try {
+    consultations = await fetchPatientConsultations();
+  } catch {
+    return [];
+  }
+  if (!consultations.length) return [];
+
+  const results = await Promise.allSettled(
+    consultations.map((c) =>
+      api.get(`/api/consultations/${c.id}/ordonnances`).then((r) =>
+        asArray(unwrap(r)).map((p) => ({ ...normalizePrescription(p), consultationId: c.id }))
+      )
+    )
+  );
+
+  return results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+}
+
+/** Enregistrer une ordonnance (gynécologue). */
+export async function savePrescription(consultationId, payload) {
+  const res = await api.post(`/api/consultations/${consultationId}/ordonnances`, payload);
+  return unwrap(res);
+}
+
+/** Dashboard gynécologue — tout en parallèle. */
+export async function loadDoctorDashboardData() {
+  const [profileRes, rdvRes, patientsRes] = await Promise.allSettled([
+    api.get("/api/gynecologues/me"),
+    api.get("/api/rdv/en-attente"),
+    // endpoint backend réel pour les patientes du gynécologue connecté
+    api.get("/api/patientes/mes-patientes"),
   ]);
 
-  return {
-    profile: normalizePatientProfile(profile, user),
-    appointments: asArray(appointments).map(normalizeAppointment),
-    doctors: asArray(doctors).map(normalizeDoctor),
-  };
+  const profileSource = profileRes.status === "fulfilled" ? unwrap(profileRes.value) ?? {} : {};
+  const profile = normalizeDoctorProfile(profileSource);
+  const appointments = (
+    rdvRes.status === "fulfilled" ? asArray(unwrap(rdvRes.value)) : []
+  ).map(normalizeAppointment);
+  const patients = (
+    patientsRes.status === "fulfilled" ? asArray(unwrap(patientsRes.value)) : []
+  ).map(normalizePatient);
+
+  let availabilities = [];
+  try {
+    availabilities = await fetchMyDisponibilites(profileSource.id);
+  } catch {
+    availabilities = [];
+  }
+
+  return { profile, appointments, patients, prescriptions: [], availabilities };
 }
 
-export async function loadDoctorDashboardData(user) {
-  const id = user?.id;
-
-  const [profile, appointments, patients, prescriptions] = await Promise.all([
-    getFirstAvailable([
-      `/api/gynecologues/${id}`,
-      `/api/gynecologue/${id}`,
-      `/api/doctors/${id}`,
-      "/api/gynecologues/me",
-      "/api/doctors/me",
-      "/api/auth/me",
-    ]),
-    getFirstAvailable([
-      `/api/rendezvous/gynecologue/${id}`,
-      `/api/rendez-vous/gynecologue/${id}`,
-      `/api/appointments/doctor/${id}`,
-      `/api/gynecologues/${id}/appointments`,
-      "/api/rendezvous/me",
-    ]),
-    getFirstAvailable([
-      `/api/gynecologues/${id}/patientes`,
-      `/api/gynecologues/${id}/patients`,
-      `/api/patientes/gynecologue/${id}`,
-      `/api/patients/doctor/${id}`,
-      "/api/patientes",
-    ]),
-    getFirstAvailable([
-      `/api/prescriptions/gynecologue/${id}`,
-      `/api/ordonnances/gynecologue/${id}`,
-      `/api/gynecologues/${id}/prescriptions`,
-      "/api/prescriptions/me",
-    ]),
+/** Dashboard patiente — tout en parallèle. */
+export async function loadPatientDashboardData() {
+  const [profileRes, rdvRes, gynecosRes] = await Promise.allSettled([
+    api.get("/api/patientes/me"),
+    api.get("/api/rdv/mes-rdv"),
+    api.get("/api/gynecologues"),
   ]);
 
-  return {
-    profile: normalizeDoctorProfile(profile, user),
-    appointments: asArray(appointments).map(normalizeAppointment),
-    patients: asArray(patients).map(normalizePatient),
-    prescriptions: asArray(prescriptions).map(normalizePrescription),
-  };
+  const profile = normalizePatientProfile(
+    profileRes.status === "fulfilled" ? unwrap(profileRes.value) ?? {} : {}
+  );
+  const appointments = (
+    rdvRes.status === "fulfilled" ? asArray(unwrap(rdvRes.value)) : []
+  ).map(normalizeAppointment);
+  const doctors = (
+    gynecosRes.status === "fulfilled" ? asArray(unwrap(gynecosRes.value)) : []
+  ).map(normalizeDoctor);
+
+  return { profile, appointments, doctors };
 }

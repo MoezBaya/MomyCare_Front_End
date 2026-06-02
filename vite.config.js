@@ -10,4 +10,7 @@ export default defineConfig({
       '@': path.resolve(process.cwd(), './src'),
     },
   },
+  optimizeDeps: {
+    exclude: ['@fullcalendar/react', '@fullcalendar/core', '@fullcalendar/daygrid', '@fullcalendar/timegrid', '@fullcalendar/interaction']
+  }
 })

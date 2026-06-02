@@ -1,9 +1,8 @@
 import { useAppNavigation } from "@/hooks/useAppNavigation";
 import { AppRouter }        from "@/components/AppRouter";
 
-// ─── App ──────────────────────────────────────────────────────
-// S : orchestre uniquement navigation + routing
-// D : dépend des abstractions (hook + router), pas des détails
+
+
 
 export default function App() {
   const {
