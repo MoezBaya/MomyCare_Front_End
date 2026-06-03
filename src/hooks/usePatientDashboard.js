@@ -1,28 +1,28 @@
+// src/hooks/usePatientDashboard.js
 import { useEffect, useState } from "react";
 import { loadPatientDashboard } from "@/services/patientService";
-import { usePatientProfile } from "@/hooks/usePatientProfile";
-import { usePatientAppointments } from "@/hooks/usePatientAppointments";
-import { usePatientDoctors } from "@/hooks/usePatientDoctors";
+import { usePatientProfile } from "./usePatientProfile";
+import { usePatientAppointments } from "./usePatientAppointments";
+import { usePatientDoctors } from "./usePatientDoctors";
 
-export function usePatientDashboard(user) {
-  const [activeTab,             setActiveTab]             = useState("accueil");
-  const [showBookModal,         setShowBookModal]         = useState(false);
-  const [showEditProfileModal,  setShowEditProfileModal]  = useState(false);
-  const [showCancelModal,       setShowCancelModal]       = useState(false);
-  const [showSearchModal,       setShowSearchModal]       = useState(false);
-  const [isLoadingData,         setIsLoadingData]         = useState(false);
-  const [appointmentToCancel,   setAppointmentToCancel]   = useState(null);
+export function usePatientDashboard(user, onLogout) {
+  const [activeTab, setActiveTab] = useState("accueil");
+  const [showBookModal, setShowBookModal] = useState(false);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+  const [appointmentToCancel, setAppointmentToCancel] = useState(null);
 
-  const profileState      = usePatientProfile(user);
+  const profileState = usePatientProfile(user);
   const appointmentsState = usePatientAppointments();
-  const doctorsState      = usePatientDoctors();
+  const doctorsState = usePatientDoctors();
 
   useEffect(() => {
     let isMounted = true;
     async function loadData() {
       setIsLoadingData(true);
       try {
-        // Plus besoin de passer user — le JWT fait le travail
         const data = await loadPatientDashboard();
         if (!isMounted) return;
         profileState.saveProfile(data.profile);
@@ -38,18 +38,32 @@ export function usePatientDashboard(user) {
       }
     }
     loadData();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
-  const openBookModal        = () => { setShowBookModal(true); doctorsState.loadDoctors(); };
-  const openSearchModal      = () => { setShowSearchModal(true); doctorsState.loadDoctors(); };
+  const openBookModal = () => {
+    setShowBookModal(true);
+    doctorsState.loadDoctors();
+  };
+  const openSearchModal = () => {
+    setShowSearchModal(true);
+    doctorsState.loadDoctors();
+  };
   const openEditProfileModal = () => setShowEditProfileModal(true);
-  const openCancelModal      = (appt = null) => { setAppointmentToCancel(appt); setShowCancelModal(true); };
+  const openCancelModal = (appt = null) => {
+    setAppointmentToCancel(appt);
+    setShowCancelModal(true);
+  };
 
-  const closeBookModal        = () => setShowBookModal(false);
-  const closeSearchModal      = () => setShowSearchModal(false);
+  const closeBookModal = () => setShowBookModal(false);
+  const closeSearchModal = () => setShowSearchModal(false);
   const closeEditProfileModal = () => setShowEditProfileModal(false);
-  const closeCancelModal      = () => { setShowCancelModal(false); setAppointmentToCancel(null); };
+  const closeCancelModal = () => {
+    setShowCancelModal(false);
+    setAppointmentToCancel(null);
+  };
 
   const handleEditNextAppt = (appt) => {
     doctorsState.selectDoctorForBooking(appt?.gynecologueId || appt?.doctor || "");
@@ -58,11 +72,9 @@ export function usePatientDashboard(user) {
 
   const handleBookSuccess = (appt) => {
     appointmentsState.addAppointment(appt);
-    // Rafraîchir les créneaux disponibles du gynécologue après réservation
     if (appt?.gynecologueId) {
       doctorsState.reloadDoctorSlots(appt.gynecologueId);
     }
-    // Rafraîchir aussi la liste complète des RDV depuis le serveur
     appointmentsState.reloadAppointments();
     closeBookModal();
     setActiveTab("rdv");
@@ -80,19 +92,27 @@ export function usePatientDashboard(user) {
 
   return {
     user,
+    onLogout,
     ...profileState,
     ...appointmentsState,
     pastAppointments: appointmentsState.closedAppointments,
     ...doctorsState,
-    activeTab,         setActiveTab,
+    activeTab,
+    setActiveTab,
     isLoadingData,
-    showBookModal,     showEditProfileModal,
-    showCancelModal,   showSearchModal,
+    showBookModal,
+    showEditProfileModal,
+    showCancelModal,
+    showSearchModal,
     appointmentToCancel,
-    openBookModal,     openSearchModal,
-    openEditProfileModal, openCancelModal,
-    closeBookModal,    closeSearchModal,
-    closeEditProfileModal, closeCancelModal,
+    openBookModal,
+    openSearchModal,
+    openEditProfileModal,
+    openCancelModal,
+    closeBookModal,
+    closeSearchModal,
+    closeEditProfileModal,
+    closeCancelModal,
     handleEditNextAppt,
     handleBookSuccess,
     handleCancelAppointment,

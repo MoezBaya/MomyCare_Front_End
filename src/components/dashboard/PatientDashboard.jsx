@@ -1,51 +1,165 @@
+// src/components/dashboard/PatientDashboard.jsx
+import { useState } from "react";
+import MomyCareLogo from "@/components/shared/MomyCareLogo";
+import { Calendar, Home, FileText, User, LogOut, Heart, Menu, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PatientProvider } from "@/context/PatientContext";
 import { usePatientDashboard } from "@/hooks/usePatientDashboard";
-import PatientHeader from "@/components/dashboard/PatientHeader";
-import PatientHomeView from "@/components/dashboard/PatientHomeView";
-import PatientFile from "@/components/dashboard/PatientFile";
-import PatientRendezVousView from "@/components/dashboard/patient/views/PatientRendezVousView";
-import PatientProfilView from "@/components/dashboard/patient/views/PatientProfilView";
-import BookAppointmentModal from "@/components/dashboard/patient/modals/BookAppointmentModal";
-import SearchDoctorModal from "@/components/dashboard/patient/modals/SearchDoctorModal";
-import CancelAppointmentModal from "@/components/dashboard/patient/modals/CancelAppointmentModal";
-import EditProfileModal from "@/components/dashboard/patient/modals/EditProfileModal";
+import PatientHomeView from "./PatientHomeView";
+import PatientRendezVousView from "./patient/views/PatientRendezVousView";
+import PatientFile from "./PatientFile";
+import PatientProfilView from "./patient/views/PatientProfilView";
+import BookAppointmentModal from "./patient/modals/BookAppointmentModal";
+import SearchDoctorModal from "./patient/modals/SearchDoctorModal";
+import EditProfileModal from "./patient/modals/EditProfileModal";
+import CancelAppointmentModal from "./patient/modals/CancelAppointmentModal";
 
 export default function PatientDashboard({ user, onLogout }) {
-  const dashboard = usePatientDashboard(user);
+  const dashboard = usePatientDashboard(user, onLogout);
   const {
     activeTab,
-    isLoadingData,
+    setActiveTab,
     showBookModal,
+    showSearchModal,
     showEditProfileModal,
     showCancelModal,
-    showSearchModal,
   } = dashboard;
 
-  const viewRegistry = {
-    accueil: <PatientHomeView />,
-    rdv: <PatientRendezVousView />,
-    dossier: <PatientFile />,
-    profil: <PatientProfilView />,
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const navItems = [
+    { id: "accueil", label: "Accueil", icon: Home },
+    { id: "rdv", label: "Mes rendez-vous", icon: Calendar },
+    { id: "dossier", label: "Mon dossier médical", icon: FileText },
+    { id: "profil", label: "Mon profil", icon: User },
+  ];
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "accueil":
+        return <PatientHomeView />;
+      case "rdv":
+        return <PatientRendezVousView />;
+      case "dossier":
+        return <PatientFile />;
+      case "profil":
+        return <PatientProfilView />;
+      default:
+        return <PatientHomeView />;
+    }
   };
 
   return (
-    <PatientProvider value={{ ...dashboard, user, onLogout }}>
-      <div className="min-h-screen bg-[#fcf8fa] font-sans antialiased text-gray-800 selection:bg-rose-500 selection:text-white">
-        <PatientHeader />
+    <PatientProvider value={dashboard}>
+      <div className="flex h-screen bg-[#fcf8fa] overflow-hidden">
+        {/* Sidebar Desktop */}
+        <aside className="hidden md:flex md:w-64 flex-col border-r border-pink-100 bg-white shadow-sm">
+          <div className="p-5 border-b border-pink-50">
+            <div className="flex items-center gap-2 text-rose-600">
+              <MomyCareLogo size="md" variant="col" className="py-2" />
+            </div>
+          </div>
+          <nav className="flex-1 p-4 space-y-1">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
+                  activeTab === item.id
+                    ? "bg-rose-50 text-rose-600"
+                    : "text-gray-600 hover:bg-rose-50/50 hover:text-rose-500"
+                }`}
+              >
+                <item.icon className="h-5 w-5" />
+                {item.label}
+              </button>
+            ))}
+          </nav>
+          <div className="p-4 border-t border-pink-50">
+            <button
+              onClick={onLogout}
+              className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-rose-50/50 hover:text-rose-500"
+            >
+              <LogOut className="h-5 w-5" />
+              Déconnexion
+            </button>
+          </div>
+        </aside>
 
-        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          {isLoadingData && (
-            <p className="mb-4 text-xs font-semibold text-rose-500">Chargement des donnees...</p>
-          )}
+        {/* Bouton menu mobile */}
+        <div className="md:hidden fixed top-4 left-4 z-50">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setSidebarOpen(true)}
+            className="rounded-full"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        </div>
 
-          {viewRegistry[activeTab] || viewRegistry.accueil}
-        </main>
+        {/* Sidebar Mobile */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-50 md:hidden">
+            <div
+              className="absolute inset-0 bg-black/30"
+              onClick={() => setSidebarOpen(false)}
+            />
+            <div className="absolute left-0 top-0 h-full w-64 bg-white shadow-xl animate-slide-in">
+              <div className="flex justify-end p-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <div className="p-4 border-b border-pink-50">
+                <div className="flex items-center gap-2 text-rose-600">
+                  <Heart className="h-6 w-6 fill-rose-100" />
+                  <span className="text-xl font-bold">MomyCare</span>
+                </div>
+              </div>
+              <nav className="p-4 space-y-1">
+                {navItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setSidebarOpen(false);
+                    }}
+                    className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium ${
+                      activeTab === item.id
+                        ? "bg-rose-50 text-rose-600"
+                        : "text-gray-600 hover:bg-rose-50/50"
+                    }`}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.label}
+                  </button>
+                ))}
+                <button
+                  onClick={onLogout}
+                  className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-rose-50/50"
+                >
+                  <LogOut className="h-5 w-5" />
+                  Déconnexion
+                </button>
+              </nav>
+            </div>
+          </div>
+        )}
 
-        {showBookModal && <BookAppointmentModal />}
-        {showSearchModal && <SearchDoctorModal />}
-        {showEditProfileModal && <EditProfileModal />}
-        {showCancelModal && <CancelAppointmentModal />}
+        {/* Contenu principal */}
+        <main className="flex-1 overflow-y-auto p-6 md:p-8">{renderContent()}</main>
       </div>
+
+      {/* Modals – placés en dehors de la div flex pour bien fonctionner */}
+      {showBookModal && <BookAppointmentModal />}
+      {showSearchModal && <SearchDoctorModal />}
+      {showEditProfileModal && <EditProfileModal />}
+      {showCancelModal && <CancelAppointmentModal />}
     </PatientProvider>
   );
 }

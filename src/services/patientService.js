@@ -1,24 +1,54 @@
 import api from "@/services/api";
 import {
-  loadPatientDashboardData,
-  fetchAvailableGynecos,
+  loadPatientDashboardData
 } from "@/services/dashboardService";
 
-function unwrap(res) {
-  return res?.data?.body ?? res?.data?.data ?? res?.data ?? null;
-}
+
 
 function asArray(v) {
   if (!v) return [];
   if (Array.isArray(v)) return v;
   if (Array.isArray(v.content)) return v.content;
-  if (Array.isArray(v.body)) return v.body;
   return [];
 }
 
 function fullName({ prenom = "", nom = "", login = "" } = {}) {
   return [prenom, nom].filter(Boolean).join(" ") || login || "";
 }
+
+function normalizeDoctor(d = {}) {
+  const user = d.user || {};
+  return {
+    id: d.id,
+    name: fullName(user) || fullName(d) || "Gynécologue",
+    specialty: "Gynécologue Obstétricien",
+    hospital: user.adresse || d.adresse || "Adresse non précisée",
+    city: user.ville || d.ville || "",
+    experience: d.experience ? `${d.experience} ans` : "Expérience non renseignée",
+    rating: "4.8", // à adapter si vous avez une vraie note
+  };
+}
+
+export async function fetchAvailableGynecos() {
+  try {
+    const res = await api.get("/api/gynecologues");
+    const data = asArray(unwrap(res));
+    return data.map(normalizeDoctor);
+  } catch (error) {
+    console.error("Erreur fetchAvailableGynecos :", error);
+    return [];
+  }
+}
+
+
+
+function unwrap(res) {
+  return res?.data?.body ?? res?.data?.data ?? res?.data ?? null;
+}
+
+
+
+
 
 function formatDate(value) {
   if (!value) return "";
@@ -66,6 +96,7 @@ function normalizeAppointment(a = {}) {
   };
 }
 
+
 export const loadPatientDashboard = async () => {
   return await loadPatientDashboardData();
 };
@@ -80,5 +111,3 @@ export const fetchPatientAppointments = async () => {
     return [];
   }
 };
-
-export { fetchAvailableGynecos };
