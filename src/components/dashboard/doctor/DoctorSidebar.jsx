@@ -1,4 +1,4 @@
-import { Home, Calendar, CalendarDays, Clock, Users, FolderOpen, Pill, Settings, LogOut, FlaskConical } from "lucide-react";
+import { Home, Calendar, CalendarDays, Clock, Users, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -9,9 +9,6 @@ const menuItems = [
   { key: "rdv", label: "RDV", icon: Calendar },
   { key: "disponibilites", label: "Disponibilités", icon: Clock },
   { key: "patients", label: "Patients", icon: Users },
-  { key: "dossiers", label: "Dossiers", icon: FolderOpen },
-  { key: "examens", label: "Examens", icon: FlaskConical },
-  { key: "medicaments", label: "Médicaments", icon: Pill },
   { key: "parametres", label: "Paramètres", icon: Settings },
 ];
 

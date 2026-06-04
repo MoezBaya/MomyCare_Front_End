@@ -1,18 +1,19 @@
 // src/components/dashboard/PatientDashboard.jsx
 import { useState } from "react";
 import MomyCareLogo from "@/components/shared/MomyCareLogo";
-import { Calendar, Home, FileText, User, LogOut, Heart, Menu, X } from "lucide-react";
+import { Calendar, Home, FileText, User, LogOut, Heart, Menu, X, Stethoscope } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PatientProvider } from "@/context/PatientContext";
 import { usePatientDashboard } from "@/hooks/usePatientDashboard";
 import PatientHomeView from "./PatientHomeView";
 import PatientRendezVousView from "./patient/views/PatientRendezVousView";
-import PatientFile from "./PatientFile";
 import PatientProfilView from "./patient/views/PatientProfilView";
 import BookAppointmentModal from "./patient/modals/BookAppointmentModal";
 import SearchDoctorModal from "./patient/modals/SearchDoctorModal";
 import EditProfileModal from "./patient/modals/EditProfileModal";
 import CancelAppointmentModal from "./patient/modals/CancelAppointmentModal";
+import MonGynecologue from "./patient/views/MonGynecologue";
+import PatientFullFile from "./patient/views/PatientFullFile";
 
 export default function PatientDashboard({ user, onLogout }) {
   const dashboard = usePatientDashboard(user, onLogout);
@@ -31,6 +32,7 @@ export default function PatientDashboard({ user, onLogout }) {
     { id: "accueil", label: "Accueil", icon: Home },
     { id: "rdv", label: "Mes rendez-vous", icon: Calendar },
     { id: "dossier", label: "Mon dossier médical", icon: FileText },
+    { id: "gyneco", label: "Mon gynécologue", icon: Stethoscope },
     { id: "profil", label: "Mon profil", icon: User },
   ];
 
@@ -41,9 +43,11 @@ export default function PatientDashboard({ user, onLogout }) {
       case "rdv":
         return <PatientRendezVousView />;
       case "dossier":
-        return <PatientFile />;
+        return <PatientFullFile />;   // ← composant dynamique
       case "profil":
         return <PatientProfilView />;
+      case "gyneco":
+        return <MonGynecologue />;
       default:
         return <PatientHomeView />;
     }
@@ -155,7 +159,7 @@ export default function PatientDashboard({ user, onLogout }) {
         <main className="flex-1 overflow-y-auto p-6 md:p-8">{renderContent()}</main>
       </div>
 
-      {/* Modals – placés en dehors de la div flex pour bien fonctionner */}
+      {/* Modals */}
       {showBookModal && <BookAppointmentModal />}
       {showSearchModal && <SearchDoctorModal />}
       {showEditProfileModal && <EditProfileModal />}

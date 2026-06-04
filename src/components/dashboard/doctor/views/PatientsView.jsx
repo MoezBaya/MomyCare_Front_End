@@ -2,7 +2,7 @@ import { useState } from "react";
 import { FileText, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import PatientDossierView from "../doctor/PatientDossierView";
+import PatientDossierView from "../PatientDossierView";
 
 export default function PatientsView({ patients }) {
   const [selectedPatient, setSelectedPatient] = useState(null);

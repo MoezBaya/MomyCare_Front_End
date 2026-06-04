@@ -1,16 +1,14 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
-import DoctorSidebar from "@/components/dashboard/DoctorSidebar";
-import DoctorHeader from "@/components/dashboard/DoctorHeader";
-import DoctorHomeView from "@/components/dashboard/views/DoctorHomeView";
-import RendezVousView from "@/components/dashboard/views/RendezVousView";
-import AgendaView from "@/components/dashboard/views/AgendaView";
-import DisponibilitesView from "@/components/dashboard/views/DisponibilitesView";
-import PatientsView from "@/components/dashboard/views/PatientsView";
-import DossiersView from "@/components/dashboard/views/DossiersView";
-import ExamensView from "@/components/dashboard/views/ExamensView";
-import PrescriptionsView from "@/components/dashboard/views/PrescriptionsView";
-import ParametresView from "@/components/dashboard/views/ParametresView";
+import DoctorSidebar from "@/components/dashboard/doctor/DoctorSidebar";
+import DoctorHeader from "@/components/dashboard/doctor/DoctorHeader";
+import DoctorHomeView from "@/components/dashboard/doctor/views/DoctorHomeView";
+import RendezVousView from "@/components/dashboard/doctor/views/RendezVousView";
+import AgendaView from "@/components/dashboard/doctor/views/AgendaView";
+import DisponibilitesView from "@/components/dashboard/doctor/views/DisponibilitesView";
+import PatientsView from "@/components/dashboard/doctor/views/PatientsView";
+import PrescriptionsView from "@/components/dashboard/doctor/views/PrescriptionsView";
+import ParametresView from "@/components/dashboard/doctor/views/ParametresView";
 import { useDoctorDashboard } from "@/hooks/useDoctorDashboard";
 import { DashboardProvider } from "@/context/DashboardContext";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -126,9 +124,7 @@ export default function DoctorDashboard({ user, onLogout }) {
               />
             )}
 
-            {activeSidebar === "dossiers" && <DossiersView patients={patients} />}
 
-            {activeSidebar === "examens" && <ExamensView patients={patients} />}
 
             {activeSidebar === "medicaments" && (
               <PrescriptionsView

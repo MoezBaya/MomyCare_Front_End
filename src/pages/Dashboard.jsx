@@ -1,7 +1,7 @@
 import { LogOut, Loader2 } from "lucide-react";
 
 import PatientDashboard from "@/components/dashboard/PatientDashboard";
-import DoctorDashboard from "@/components/dashboard/DoctorDashboard";
+import DoctorDashboard from "@/components/dashboard/doctor/DoctorDashboard";
 import MomyCareLogo from "@/components/shared/MomyCareLogo";
 import { Button } from "@/components/ui/button";
 import { normalizeRole } from "@/utils/roleUtils";

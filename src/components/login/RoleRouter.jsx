@@ -1,5 +1,5 @@
 import PatientDashboard from "../dashboard/PatientDashboard";
-import DoctorDashboard from "../dashboard/DoctorDashboard";
+import DoctorDashboard from "../dashboard/doctor/DoctorDashboard";
 
 const ROLE_COMPONENTS = {
   patiente: PatientDashboard,
