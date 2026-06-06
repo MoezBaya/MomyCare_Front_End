@@ -11,6 +11,16 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['@fullcalendar/react', '@fullcalendar/core', '@fullcalendar/daygrid', '@fullcalendar/timegrid', '@fullcalendar/interaction']
-  }
+    exclude: ['@fullcalendar/react', '@fullcalendar/core', '@fullcalendar/daygrid', '@fullcalendar/timegrid', '@fullcalendar/interaction'],
+    include: ['@fullcalendar/core/locales/fr']
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8081', // ← remplace par l'URL de ton backend
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 })

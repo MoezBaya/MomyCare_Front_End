@@ -80,6 +80,20 @@ function DialogClose({ className, children, ...props }) {
   );
 }
 
+function DialogTrigger({ children, asChild, ...props }) {
+  const { onOpenChange } = useDialogContext();
+  return (
+    <button
+      type="button"
+      data-slot="dialog-trigger"
+      onClick={() => onOpenChange?.(true)}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
 export {
   Dialog,
   DialogContent,
@@ -88,4 +102,5 @@ export {
   DialogTitle,
   DialogDescription,
   DialogClose,
+  DialogTrigger,
 };
